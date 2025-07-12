@@ -1,66 +1,68 @@
+// server.js  –  RandomChatX backend
 const express = require("express");
-const http = require("http");
+const http    = require("http");
 const { Server } = require("socket.io");
-const cors = require("cors");
+const cors    = require("cors");
 
 const app = express();
 app.use(cors());
 
+// ───────── Socket.io setup ─────────
 const server = http.createServer(app);
 const io = new Server(server, {
-  cors: {
-    origin: "*",
-  },
+  cors: { origin: "*" },
 });
 
-// Store user info and partner mapping
-let partnerMap = {}; // socket.id -> partnerId
-let userInfo = {};   // socket.id -> { gender, country }
+// ───────── State ─────────
+const partnerMap = {};      // socket.id  -> partnerId | null
+const userInfo   = {};      // socket.id  -> { gender, age, country }
 
-function getCountryMock() {
-  const countries = ["IN", "US", "CA", "UK", "DE", "AU", "FR"];
-  return countries[Math.floor(Math.random() * countries.length)];
-}
+// mock a random country code (replace with real IP lookup if needed)
+const countries = ["IN", "US", "CA", "UK", "DE", "AU", "FR"];
+const getCountryMock = () =>
+  countries[Math.floor(Math.random() * countries.length)];
 
+// ───────── Main connection handler ─────────
 io.on("connection", (socket) => {
-  console.log("✅ User connected:", socket.id);
+  console.log("✅ user connected:", socket.id);
 
-  // Step 1: Join queue
-  socket.on("join", ({ gender }) => {
-    console.log("🔗 Join request:", socket.id);
-
+  // 1️⃣  Join queue
+  socket.on("join", ({ gender, age }) => {
     const country = getCountryMock();
-    userInfo[socket.id] = { gender, country };
+    userInfo[socket.id] = { gender, age, country };
 
+    // find first waiting user (no filters)
     const waiting = Object.keys(partnerMap).find(
       (id) => partnerMap[id] === null && id !== socket.id
     );
 
     if (waiting) {
       partnerMap[socket.id] = waiting;
-      partnerMap[waiting] = socket.id;
+      partnerMap[waiting]  = socket.id;
 
-      const p1 = userInfo[socket.id];
-      const p2 = userInfo[waiting];
+      const me   = userInfo[socket.id];
+      const them = userInfo[waiting];
 
-      // Notify both users about the match
+      // notify both peers
       socket.emit("matched", {
         partnerId: waiting,
-        gender: p2.gender,
-        country: p2.country,
+        gender   : them.gender,
+        age      : them.age,
+        country  : them.country,
       });
 
       io.to(waiting).emit("matched", {
         partnerId: socket.id,
-        gender: p1.gender,
-        country: p1.country,
+        gender   : me.gender,
+        age      : me.age,
+        country  : me.country,
       });
     } else {
-      partnerMap[socket.id] = null;
+      partnerMap[socket.id] = null; // wait in queue
     }
   });
 
-  // Step 2: Skip match
+  // 2️⃣  Skip current partner
   socket.on("skip", () => {
     const partnerId = partnerMap[socket.id];
     if (partnerId) {
@@ -72,30 +74,20 @@ io.on("connection", (socket) => {
     socket.emit("join-again");
   });
 
-  // Step 3: WebRTC signaling
-  socket.on("offer", ({ offer, to }) => {
-    io.to(to).emit("offer", { offer, from: socket.id });
-  });
+  // 3️⃣  WebRTC signaling passthrough
+  socket.on("offer",        ({ offer,        to }) => io.to(to).emit("offer",        { offer,  from: socket.id }));
+  socket.on("answer",       ({ answer,       to }) => io.to(to).emit("answer",       { answer, from: socket.id }));
+  socket.on("ice-candidate",({ candidate,    to }) => io.to(to).emit("ice-candidate",{ candidate }));
 
-  socket.on("answer", ({ answer, to }) => {
-    io.to(to).emit("answer", { answer, from: socket.id });
-  });
-
-  socket.on("ice-candidate", ({ candidate, to }) => {
-    io.to(to).emit("ice-candidate", { candidate });
-  });
-
-  // ✅ Step 4: Real-time Chat
+  // 4️⃣  Real‑time chat
   socket.on("chat-message", (msg) => {
     const partnerId = partnerMap[socket.id];
-    if (partnerId) {
-      io.to(partnerId).emit("chat-message", msg);
-    }
+    if (partnerId) io.to(partnerId).emit("chat-message", msg);
   });
 
-  // Step 5: Disconnect
+  // 5️⃣  Disconnect cleanup
   socket.on("disconnect", () => {
-    console.log("❌ User disconnected:", socket.id);
+    console.log("❌ user disconnected:", socket.id);
     const partnerId = partnerMap[socket.id];
     if (partnerId) {
       io.to(partnerId).emit("stranger-disconnected");
@@ -106,6 +98,7 @@ io.on("connection", (socket) => {
   });
 });
 
-server.listen(5000, () => {
-  console.log("🚀 Server running on http://localhost:5000");
-});
+// ───────── Start server ─────────
+server.listen(5000, () =>
+  console.log("🚀 Socket server running on http://localhost:5000")
+);
