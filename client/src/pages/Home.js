@@ -27,8 +27,8 @@ function Home() {
         <meta property="og:title" content="RandomChat X" />
         <meta property="og:description" content="Live video chat with random strangers. Stylish, safe, and fun." />
         <meta property="og:type" content="website" />
-        <meta property="og:image" content="https://yourdomain.com/thumbnail.jpg" />
-        <meta property="og:url" content="https://yourdomain.com/" />
+<meta property="og:image" content="https://randomchatx.vercel.app/heart.png" />
+<meta property="og:url" content="https://randomchatx.vercel.app/heart.png" />
         <meta name="twitter:card" content="summary_large_image" />
       </Helmet>
 
