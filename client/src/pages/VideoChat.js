@@ -7,7 +7,7 @@ import Picker from "@emoji-mart/react";
 import data from "@emoji-mart/data";
 import "../styles/animations.css";
 
-const socket = io("http://localhost:5000"); // update for prod
+const socket = io("http://localhost:5000"); // 🔁 Change to your Vercel/Prod URL when deploying
 const matchSound = new Audio("/music.mp3");
 
 function VideoChat() {
@@ -22,16 +22,20 @@ function VideoChat() {
   const [strangerGender, setStrangerGender] = useState("");
   const [strangerCountry, setStrangerCountry] = useState("");
   const [strangerAge, setStrangerAge] = useState("");
+
   const [chatMessages, setChatMessages] = useState([]);
   const [newMessage, setNewMessage] = useState("");
   const [showEmoji, setShowEmoji] = useState(false);
+
   const [micOn, setMicOn] = useState(true);
   const [cameraOn, setCameraOn] = useState(true);
 
+  // 🔇 Stop background music
   useEffect(() => {
     location.state?.stopMusic?.();
-  }, [location.state?.age, location.state?.gender]);
+  }, [location.state]);
 
+  // 🔌 WebRTC & socket setup
   useEffect(() => {
     let retryTimer;
 
@@ -40,8 +44,11 @@ function VideoChat() {
         video: true,
         audio: true,
       });
+
       localStreamRef.current = stream;
-      if (localVideoRef.current) localVideoRef.current.srcObject = stream;
+      if (localVideoRef.current) {
+        localVideoRef.current.srcObject = stream;
+      }
 
       const gender = location.state?.gender || "male";
       const age = location.state?.age || "18-25";
@@ -55,6 +62,7 @@ function VideoChat() {
         setIsConnected(false);
 
         createPeer(partnerId);
+
         const offer = await peerRef.current.createOffer();
         await peerRef.current.setLocalDescription(offer);
         socket.emit("offer", { offer, to: partnerId });
@@ -85,6 +93,7 @@ function VideoChat() {
       socket.io.on("reconnect_attempt", () =>
         console.log("Trying to reconnect...")
       );
+
       socket.io.on("reconnect", () => {
         console.log("Reconnected!");
         socket.emit("join", { gender, age });
@@ -97,14 +106,16 @@ function VideoChat() {
     };
 
     init();
+
     return () => {
       clearTimeout(retryTimer);
       socket.off();
       socket.disconnect();
       peerRef.current?.close();
     };
-  }, []);
+  }, [location.state?.age, location.state?.gender]);
 
+  // 🎥 Create Peer
   function createPeer(partnerId) {
     if (peerRef.current) {
       peerRef.current.close();
@@ -115,12 +126,13 @@ function VideoChat() {
       iceServers: [{ urls: "stun:stun.l.google.com:19302" }],
     });
 
-    localStreamRef.current?.getTracks().forEach((track) =>
-      peerRef.current.addTrack(track, localStreamRef.current)
-    );
+    localStreamRef.current
+      ?.getTracks()
+      .forEach((track) =>
+        peerRef.current.addTrack(track, localStreamRef.current)
+      );
 
     peerRef.current.ontrack = ({ streams }) => {
-      console.log("🔗 ontrack fired, remote streams:", streams);
       if (remoteVideoRef.current) {
         remoteVideoRef.current.srcObject = streams[0];
         setIsConnected(true);
@@ -130,23 +142,14 @@ function VideoChat() {
       }
     };
 
-    peerRef.current.onaddstream = (event) => {
-      console.log("⚠️ onaddstream fallback fired");
-      if (remoteVideoRef.current) {
-        remoteVideoRef.current.srcObject = event.stream;
-        setIsConnected(true);
-      }
-    };
-
     peerRef.current.onicecandidate = ({ candidate }) => {
       if (candidate) {
         socket.emit("ice-candidate", { candidate, to: partnerId });
-        console.debug("📨 Sent ICE candidate");
       }
     };
 
     peerRef.current.onconnectionstatechange = () =>
-      console.log("🛰️ Peer state:", peerRef.current.connectionState);
+      console.log("Peer state:", peerRef.current.connectionState);
   }
 
   const flagEmoji = (cc) =>
@@ -207,7 +210,7 @@ function VideoChat() {
         />
       </Helmet>
 
-      {/* Background + Floating Hearts */}
+      {/* Background animations */}
       <div className="absolute inset-0 -z-10 overflow-hidden pointer-events-none">
         <div className="absolute top-20 left-10 w-80 h-80 bg-pink-500 rounded-full blur-3xl opacity-20 animate-pulse" />
         <div className="absolute bottom-10 right-10 w-96 h-96 bg-purple-500 rounded-full blur-3xl opacity-25 animate-pulse" />
@@ -241,8 +244,9 @@ function VideoChat() {
         </div>
       )}
 
-      {/* Videos */}
+      {/* Video Boxes */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 w-full max-w-6xl z-10">
+        {/* Local */}
         <div className="bg-white/10 backdrop-blur-lg border border-white/10 rounded-2xl shadow-2xl p-3">
           <p className="text-pink-300 text-center font-semibold mb-1">👤 You</p>
           <div className="relative w-full aspect-video rounded-xl overflow-hidden">
@@ -256,13 +260,14 @@ function VideoChat() {
           </div>
         </div>
 
+        {/* Stranger */}
         <div className="bg-white/10 backdrop-blur-lg border border-white/10 rounded-2xl shadow-2xl p-3">
           <p className="text-emerald-300 text-center font-semibold mb-1">
             🎯 Stranger
           </p>
           {isConnected ? (
             <p className="text-center text-white text-sm mb-1">
-              🎭 {strangerGender.toUpperCase()} | 🎂 {strangerAge}
+              🎭 {strangerGender.toUpperCase()} | 🎂 {strangerAge}{" "}
               {strangerCountry && (
                 <span className="ml-2">
                   🌍 {flagEmoji(strangerCountry)}
@@ -285,20 +290,13 @@ function VideoChat() {
         </div>
       </div>
 
-      {/* Chat Box */}
+      {/* Chat + Emoji */}
       <div className="bg-white/10 backdrop-blur-lg border border-white/20 rounded-2xl w-full max-w-xl p-4 shadow-xl z-10 relative">
         {showEmoji && (
           <div className="absolute bottom-24 right-4 z-50">
-            <Picker
-              data={data}
-              onEmojiSelect={(emoji) =>
-                setNewMessage((prev) => prev + emoji.native)
-              }
-              theme="dark"
-            />
+            <Picker data={data} onEmojiSelect={(e) => setNewMessage((prev) => prev + e.native)} theme="dark" />
           </div>
         )}
-
         <div className="h-44 overflow-y-auto mb-3 space-y-2">
           {chatMessages.map((m, i) => (
             <div
@@ -311,7 +309,6 @@ function VideoChat() {
             </div>
           ))}
         </div>
-
         <div className="flex items-center gap-2">
           <button
             onClick={() => setShowEmoji(!showEmoji)}
@@ -335,7 +332,7 @@ function VideoChat() {
         </div>
       </div>
 
-      {/* Controls */}
+      {/* Control Buttons */}
       <div className="flex flex-wrap gap-4 mt-4 z-10">
         <button
           onClick={handleSkip}
@@ -367,3 +364,4 @@ function VideoChat() {
 }
 
 export default VideoChat;
+
