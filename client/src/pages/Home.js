@@ -78,6 +78,7 @@ function Home() {
           </select>
         </div>
 
+        
         <motion.button
           onClick={handleStartChat}
           whileHover={{ scale: 1.05 }}
@@ -98,6 +99,13 @@ function Home() {
     </div>
   );
 }
+
+<footer className="text-center text-white mt-10">
+  <a href="/privacy" className="mx-2 underline hover:text-pink-400">Privacy</a>
+  <a href="/terms" className="mx-2 underline hover:text-pink-400">Terms</a>
+  <a href="/about" className="mx-2 underline hover:text-pink-400">About</a>
+  <a href="/blog" className="mx-2 underline hover:text-pink-400">Blog</a>
+</footer>
 
 export default Home;
 
