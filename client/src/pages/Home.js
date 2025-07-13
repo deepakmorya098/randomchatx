@@ -22,8 +22,8 @@ function Home() {
     <div className="min-h-screen bg-gradient-to-br from-pink-300 via-purple-300 to-blue-400 flex items-center justify-center p-4 font-inter relative">
       <Helmet>
         <title>🎥 RandomChat X - Talk to Strangers Instantly</title>
-        <meta name="description" content="Connect instantly with random people around the world! Enjoy live video chat with gender filters, romantic UI, and more." />
-        <meta name="keywords" content="video chat, random chat, talk to strangers, omegle alternative, random video call, dating chat, stranger meet, girl video chat, girl chat online, girl chat video " />
+         <meta name="description" content="Start live video chat with strangers across the world. 100% anonymous. Filter by gender and age. Free and fun!" />
+  <meta name="keywords" content="video chat, random chat, talk to strangers, live chat, anonymous chat, RandomChatX" />
         <meta property="og:title" content="RandomChat X" />
         <meta property="og:description" content="Live video chat with random strangers. Stylish, safe, and fun." />
         <meta property="og:type" content="website" />
